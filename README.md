@@ -4,19 +4,30 @@ Trang web cá nhân tĩnh (HTML + Tailwind CSS + Vanilla JS) kết hợp giữa 
 
 ---
 
-## 1. Cấu trúc thư mục
+## 1. Liên kết triển khai & Backend
+
+- **GitHub Repository:** https://github.com/vunguyen2907-netizen/min-personal-web
+- **Website Online (GitHub Pages):** https://vunguyen2907-netizen.github.io/min-personal-web/
+- **Supabase Project:** `min-personal-web` (`https://hlsxhrtwqlqxsmzqfigc.supabase.co`, Region: Singapore `ap-southeast-1`)
+  - `public.projects`: Lưu danh sách dự án & Case Study (công khai đọc các mục `is_published = true`).
+  - `public.trekking_logs`: Lưu nhật ký leo núi (công khai đọc các mục `is_published = true`).
+  - `public.page_view_events`: Ghi nhận & đếm lượt xem trang trực tiếp trên web (song song với GA4).
+  - `public.contact_messages`: Lưu lời nhắn từ form liên hệ (khách chỉ được phép gửi `INSERT`, không đọc được tin nhắn của người khác).
+
+## 2. Cấu trúc thư mục
 
 ```text
 .
-├── index.html            # Giao diện chính + mã nhúng Google Analytics 4 (GA4)
+├── index.html                  # Giao diện chính + mã nhúng Google Analytics 4 (GA4)
 ├── assets/
-│   ├── css/style.css     # Style tùy chỉnh, hiệu ứng cuộn & modal
+│   ├── css/style.css           # Style tùy chỉnh, hiệu ứng cuộn & modal
 │   └── js/
-│       ├── data.js       # Toàn bộ nội dung cá nhân (sửa ở đây là cập nhật cả web)
-│       └── main.js       # Render nội dung, bộ lọc, bản đồ, checklist 30L & tracking GA4
-├── robots.txt            # Cấu hình SEO cơ bản
-├── sitemap.xml           # Sơ đồ trang cho Google Search
-└── README.md             # Tài liệu hướng dẫn publish
+│       ├── data.js             # Dữ liệu mặc định (fallback khi offline) & nội dung tĩnh
+│       ├── supabase-client.js  # Kết nối REST API tới Supabase (Publishable Key)
+│       └── main.js             # Render nội dung, bộ lọc, bản đồ, checklist 30L, form & GA4
+├── robots.txt                  # Cấu hình SEO cơ bản
+├── sitemap.xml                 # Sơ đồ trang cho Google Search
+└── README.md                   # Tài liệu hướng dẫn publish
 ```
 
 ---

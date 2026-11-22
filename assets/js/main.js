@@ -9,9 +9,14 @@ function trackGAEvent(eventName, params = {}) {
     }
 }
 
+// Lưu trạng thái danh sách hiện tại (sẽ được đồng bộ từ Supabase nếu kết nối thành công)
+let currentProjects = [...SITE_DATA.projects];
+let currentTrekkingLogs = [...SITE_DATA.trekkingLogs];
+let activeProjectFilter = 'all';
+
 document.addEventListener('DOMContentLoaded', () => {
     renderManagementPillars();
-    renderProjects('all');
+    renderProjects(activeProjectFilter);
     renderTrekkingLogs();
     renderConqueredPeaks();
     renderHealingGetaways();
@@ -22,9 +27,47 @@ document.addEventListener('DOMContentLoaded', () => {
     initProjectFilters();
     initModalHandlers();
     initCopyEmail();
+    initContactForm();
     initScrollReveal();
     initBackToTop();
+
+    // Đồng bộ dữ liệu động & lượt xem từ Supabase
+    syncWithSupabase();
 });
+
+async function syncWithSupabase() {
+    if (typeof SupabaseAPI === 'undefined') return;
+    const syncStatusEl = document.getElementById('supabase-sync-status');
+
+    try {
+        const [projects, treks, viewCount] = await Promise.all([
+            SupabaseAPI.fetchProjects().catch(() => null),
+            SupabaseAPI.fetchTrekkingLogs().catch(() => null),
+            SupabaseAPI.recordAndGetPageViews('/').catch(() => null)
+        ]);
+
+        if (Array.isArray(projects) && projects.length > 0) {
+            currentProjects = projects;
+            renderProjects(activeProjectFilter);
+        }
+
+        if (Array.isArray(treks) && treks.length > 0) {
+            currentTrekkingLogs = treks;
+            renderTrekkingLogs();
+        }
+
+        const viewCountEl = document.getElementById('live-view-count');
+        if (viewCountEl && typeof viewCount === 'number') {
+            viewCountEl.textContent = viewCount.toLocaleString('vi-VN');
+        }
+
+        if (syncStatusEl && (projects || treks || typeof viewCount === 'number')) {
+            syncStatusEl.textContent = '● Đã đồng bộ dữ liệu trực tiếp từ Supabase';
+        }
+    } catch (_) {
+        // Fallback mượt mà về SITE_DATA cục bộ nếu mất mạng
+    }
+}
 
 /* =========================================================
    1. RENDER MANAGEMENT & STRATEGY
@@ -72,8 +115,8 @@ function renderProjects(filterCategory) {
     if (!container) return;
 
     const filtered = filterCategory === 'all'
-        ? SITE_DATA.projects
-        : SITE_DATA.projects.filter(p => p.category === filterCategory);
+        ? currentProjects
+        : currentProjects.filter(p => p.category === filterCategory);
 
     container.innerHTML = filtered.map(project => `
         <article class="group bg-rustic-bg/5 border border-rustic-bg/15 p-8 hover:bg-rustic-bg/10 hover:border-terracotta/60 transition-all duration-300 hover:-translate-y-1.5 flex flex-col">
@@ -109,7 +152,7 @@ function renderProjects(filterCategory) {
 
     container.querySelectorAll('.open-project-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const project = SITE_DATA.projects.find(p => p.id === btn.dataset.projectId);
+            const project = currentProjects.find(p => p.id === btn.dataset.projectId);
             if (project) openProjectModal(project);
         });
     });
@@ -121,9 +164,9 @@ function initProjectFilters() {
         btn.addEventListener('click', () => {
             buttons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const filter = btn.dataset.filter;
-            renderProjects(filter);
-            trackGAEvent('filter_projects', { category: filter });
+            activeProjectFilter = btn.dataset.filter;
+            renderProjects(activeProjectFilter);
+            trackGAEvent('filter_projects', { category: activeProjectFilter });
         });
     });
 }
@@ -133,9 +176,9 @@ function initProjectFilters() {
    ========================================================= */
 function renderTrekkingLogs() {
     const container = document.getElementById('trekking-grid');
-    if (!container) return;
+    if (!container || currentTrekkingLogs.length === 0) return;
 
-    const [mainLog, ...otherLogs] = SITE_DATA.trekkingLogs;
+    const [mainLog, ...otherLogs] = currentTrekkingLogs;
 
     container.innerHTML = `
         <!-- Main Featured Trek -->
@@ -185,7 +228,7 @@ function renderTrekkingLogs() {
 
     container.querySelectorAll('.open-trek-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const log = SITE_DATA.trekkingLogs.find(l => l.id === btn.dataset.trekId);
+            const log = currentTrekkingLogs.find(l => l.id === btn.dataset.trekId);
             if (log) openTrekModal(log);
         });
     });
@@ -519,6 +562,45 @@ function initCopyEmail() {
             trackGAEvent('copy_email', { email: SITE_DATA.profile.email });
         } catch (_) {
             window.location.href = `mailto:${SITE_DATA.profile.email}`;
+        }
+    });
+}
+
+function initContactForm() {
+    const form = document.getElementById('contact-form');
+    const submitBtn = document.getElementById('contact-submit-btn');
+    const statusEl = document.getElementById('contact-form-status');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (typeof SupabaseAPI === 'undefined') return;
+
+        const formData = new FormData(form);
+        const payload = {
+            sender_name: String(formData.get('sender_name') || ''),
+            sender_email: String(formData.get('sender_email') || ''),
+            topic: String(formData.get('topic') || 'general'),
+            message: String(formData.get('message') || '')
+        };
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Đang gửi...';
+        statusEl.textContent = '';
+        statusEl.className = 'text-xs font-mono text-gray-300';
+
+        try {
+            await SupabaseAPI.submitContactMessage(payload);
+            form.reset();
+            statusEl.textContent = '✓ Cảm ơn bạn! Lời nhắn đã được lưu thành công.';
+            statusEl.className = 'text-xs font-mono text-emerald-300';
+            trackGAEvent('submit_contact_form', { topic: payload.topic });
+        } catch (_) {
+            statusEl.textContent = '✗ Không thể gửi lúc này, vui lòng thử lại hoặc gửi email trực tiếp.';
+            statusEl.className = 'text-xs font-mono text-amber-300';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Gửi lời nhắn';
         }
     });
 }
