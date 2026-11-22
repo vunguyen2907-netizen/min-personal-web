@@ -130,7 +130,7 @@ function initRichTextEditor() {
 
     trekQuill = new Quill('#trek-editor', {
         theme: 'snow',
-        placeholder: 'Bắt đầu viết nhật ký hành trình, định dạng tiêu đề, in đậm, trích dẫn hoặc chèn ảnh từ Google Drive...',
+        placeholder: 'Viết bài, dán ảnh trực tiếp (Cmd/Ctrl+V) hoặc kéo-thả ảnh vào đây để tự động lưu lên Google Drive...',
         modules: {
             toolbar: {
                 container: [
@@ -156,6 +156,62 @@ function initRichTextEditor() {
             }
         }
     });
+
+    // Tự động upload ảnh lên Google Drive khi Dán (Cmd/Ctrl+V) hoặc Kéo-thả vào khung soạn thảo
+    async function handleEditorImageFiles(files) {
+        const imageFiles = Array.from(files || []).filter(f => f && f.type && f.type.startsWith('image/'));
+        if (imageFiles.length === 0) return false;
+
+        const statusEl = document.getElementById('editor-upload-status');
+        for (const file of imageFiles) {
+            if (statusEl) statusEl.textContent = `Đang tự động lưu ảnh (${file.name || 'clipboard.png'}) lên Google Drive...`;
+            try {
+                const url = await uploadImageToGoogleDrive(file);
+                const range = trekQuill.getSelection(true) || { index: trekQuill.getLength() };
+                trekQuill.insertEmbed(range.index, 'image', url, 'user');
+                trekQuill.setSelection(range.index + 1);
+                if (statusEl) statusEl.textContent = '✓ Đã tự động lưu ảnh lên Google Drive và chèn vào bài!';
+            } catch (err) {
+                showToast(err.message, 'error');
+                if (statusEl) statusEl.textContent = `✗ ${err.message}`;
+            }
+        }
+        return true;
+    }
+
+    trekQuill.root.addEventListener('paste', async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const imageFiles = [];
+        for (const item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const f = item.getAsFile();
+                if (f) imageFiles.push(f);
+            }
+        }
+        if (imageFiles.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            await handleEditorImageFiles(imageFiles);
+        }
+    }, true);
+
+    trekQuill.root.addEventListener('dragover', (e) => {
+        if (e.dataTransfer?.types?.includes('Files')) {
+            e.preventDefault();
+        }
+    });
+
+    trekQuill.root.addEventListener('drop', async (e) => {
+        const files = e.dataTransfer?.files;
+        if (!files || files.length === 0) return;
+        const hasImage = Array.from(files).some(f => f.type && f.type.startsWith('image/'));
+        if (hasImage) {
+            e.preventDefault();
+            e.stopPropagation();
+            await handleEditorImageFiles(files);
+        }
+    }, true);
 }
 
 function getAuthHeaders(extra = {}) {
@@ -560,6 +616,31 @@ function initTrekForm() {
         updateCoverPreview(normalized);
     });
     imageInput?.addEventListener('input', () => updateCoverPreview(normalizeImageUrl(imageInput.value)));
+
+    // Cho phép dán trực tiếp ảnh từ clipboard (Cmd/Ctrl+V) vào ô Ảnh bìa -> tự upload lên Google Drive
+    imageInput?.addEventListener('paste', async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (!file) continue;
+                e.preventDefault();
+                const statusEl = document.getElementById('trek-cover-status');
+                if (statusEl) statusEl.textContent = 'Đang tự động lưu ảnh bìa vừa dán lên Google Drive...';
+                try {
+                    const url = await uploadImageToGoogleDrive(file);
+                    imageInput.value = url;
+                    updateCoverPreview(url);
+                    if (statusEl) statusEl.textContent = '✓ Đã tự động lưu ảnh bìa lên Google Drive!';
+                } catch (err) {
+                    showToast(err.message, 'error');
+                    if (statusEl) statusEl.textContent = `✗ ${err.message}`;
+                }
+                break;
+            }
+        }
+    });
 
     coverUpload?.addEventListener('change', async () => {
         const file = coverUpload.files?.[0];
