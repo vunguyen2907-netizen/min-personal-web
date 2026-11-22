@@ -79,16 +79,16 @@ function renderManagementPillars() {
     container.innerHTML = SITE_DATA.managementPillars.map(item => `
         <div class="reveal bg-rustic-bg/5 border border-rustic-bg/15 p-7 hover:bg-rustic-bg/10 transition-all duration-300 flex flex-col">
             <div class="flex items-center justify-between gap-2 mb-4">
-                <span class="text-xs font-mono uppercase tracking-widest text-terracotta bg-terracotta/15 px-3 py-1">
+                <span class="text-xs font-mono font-semibold uppercase tracking-widest text-terracotta-soft bg-terracotta/30 border border-terracotta-light/40 px-3 py-1">
                     ${item.metric}
                 </span>
             </div>
             <h3 class="text-xl font-semibold text-white mb-3">${item.title}</h3>
-            <p class="text-gray-300 text-sm leading-relaxed mb-5 flex-grow">${item.description}</p>
-            <ul class="space-y-2 border-t border-rustic-bg/10 pt-4 text-xs text-gray-300">
+            <p class="text-gray-200 text-sm leading-relaxed mb-5 flex-grow">${item.description}</p>
+            <ul class="space-y-2 border-t border-rustic-bg/15 pt-4 text-xs text-gray-200">
                 ${item.highlights.map(h => `
                     <li class="flex items-start gap-2">
-                        <span class="text-terracotta mt-0.5">▸</span>
+                        <span class="text-terracotta-light mt-0.5">▸</span>
                         <span>${h}</span>
                     </li>
                 `).join('')}
@@ -119,28 +119,28 @@ function renderProjects(filterCategory) {
         : currentProjects.filter(p => p.category === filterCategory);
 
     container.innerHTML = filtered.map(project => `
-        <article class="group bg-rustic-bg/5 border border-rustic-bg/15 p-8 hover:bg-rustic-bg/10 hover:border-terracotta/60 transition-all duration-300 hover:-translate-y-1.5 flex flex-col">
+        <article class="group bg-rustic-bg/5 border border-rustic-bg/15 p-8 hover:bg-rustic-bg/10 hover:border-terracotta-light/60 transition-all duration-300 hover:-translate-y-1.5 flex flex-col">
             <div class="flex items-start justify-between mb-6">
-                <div class="text-terracotta">${getProjectIcon(project.icon)}</div>
-                <span class="text-xs font-mono text-gray-300 border border-rustic-bg/20 px-2.5 py-1">
+                <div class="text-terracotta-light">${getProjectIcon(project.icon)}</div>
+                <span class="text-xs font-mono text-gray-200 border border-rustic-bg/25 px-2.5 py-1">
                     ${project.categoryLabel}
                 </span>
             </div>
-            <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-terracotta transition-colors">
+            <h3 class="text-xl font-semibold text-white mb-3 group-hover:text-terracotta-soft transition-colors">
                 ${project.title}
             </h3>
-            <p class="text-gray-300 text-sm leading-relaxed mb-6 flex-grow">
+            <p class="text-gray-200 text-sm leading-relaxed mb-6 flex-grow">
                 ${project.shortDesc}
             </p>
             <div class="flex flex-wrap gap-2 mb-6">
                 ${project.tags.map(tag => `
-                    <span class="text-xs px-2.5 py-1 bg-rustic-bg/10 text-rustic-bg/90 rounded-full">${tag}</span>
+                    <span class="text-xs px-2.5 py-1 bg-rustic-bg/15 text-rustic-bg rounded-full">${tag}</span>
                 `).join('')}
             </div>
             <button
                 type="button"
                 data-project-id="${project.id}"
-                class="open-project-btn mt-auto inline-flex items-center gap-2 text-sm font-medium text-terracotta hover:text-white transition-colors text-left"
+                class="open-project-btn mt-auto inline-flex items-center gap-2 text-sm font-semibold text-terracotta-light hover:text-white transition-colors text-left"
             >
                 Xem chi tiết Case Study
                 <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,9 +439,9 @@ function openProjectModal(project) {
                 </div>
             </div>
             <div class="bg-forest text-rustic-bg p-5">
-                <h4 class="text-xs font-mono uppercase tracking-wider text-terracotta font-semibold mb-2">04. Kết quả đạt được</h4>
+                <h4 class="text-xs font-mono uppercase tracking-wider text-terracotta-light font-semibold mb-2">04. Kết quả đạt được</h4>
                 <ul class="space-y-2 text-sm">
-                    ${cs.impact.map(imp => `<li class="flex items-start gap-2"><span class="text-terracotta">✓</span><span>${imp}</span></li>`).join('')}
+                    ${cs.impact.map(imp => `<li class="flex items-start gap-2"><span class="text-terracotta-light">✓</span><span>${imp}</span></li>`).join('')}
                 </ul>
             </div>
         </div>

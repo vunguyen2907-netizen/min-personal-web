@@ -8,10 +8,10 @@ const SITE_DATA = {
         name: "Min",
         brandMark: "M",
         role: "Area Manager • Data & Automation Enthusiast",
-        email: "hello@yourdomain.id.vn",
+        email: "vunguyen2907@gmail.com",
         linkedin: "https://linkedin.com/in/yourprofile",
-        github: "https://github.com/yourusername",
-        domain: "yourdomain.id.vn"
+        github: "https://github.com/vunguyen2907-netizen/min-personal-web",
+        domain: "vunguyen2907.id.vn"
     },
 
     // 1. Góc Quản trị & Chiến lược (Management & Strategy)
