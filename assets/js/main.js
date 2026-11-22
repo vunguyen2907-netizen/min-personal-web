@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function syncWithSupabase() {
     if (typeof SupabaseAPI === 'undefined') return;
-    const syncStatusEl = document.getElementById('supabase-sync-status');
 
     try {
         const [projects, treks, viewCount] = await Promise.all([
@@ -59,10 +58,6 @@ async function syncWithSupabase() {
         const viewCountEl = document.getElementById('live-view-count');
         if (viewCountEl && typeof viewCount === 'number') {
             viewCountEl.textContent = viewCount.toLocaleString('vi-VN');
-        }
-
-        if (syncStatusEl && (projects || treks || typeof viewCount === 'number')) {
-            syncStatusEl.textContent = '● Đã đồng bộ dữ liệu trực tiếp từ Supabase';
         }
     } catch (_) {
         // Fallback mượt mà về SITE_DATA cục bộ nếu mất mạng
@@ -592,8 +587,8 @@ function initContactForm() {
         try {
             await SupabaseAPI.submitContactMessage(payload);
             form.reset();
-            statusEl.textContent = '✓ Cảm ơn bạn! Lời nhắn đã được lưu thành công.';
-            statusEl.className = 'text-xs font-mono text-emerald-300';
+            statusEl.textContent = '✓ Cảm ơn bạn! Lời nhắn đã được gửi thành công.';
+            statusEl.className = 'text-xs font-mono text-emerald-200 font-medium';
             trackGAEvent('submit_contact_form', { topic: payload.topic });
         } catch (_) {
             statusEl.textContent = '✗ Không thể gửi lúc này, vui lòng thử lại hoặc gửi email trực tiếp.';
