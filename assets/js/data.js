@@ -5,8 +5,8 @@
 
 const SITE_DATA = {
     profile: {
-        name: "Min",
-        brandMark: "M",
+        name: "Vũ Titan",
+        brandMark: "VT",
         role: "Area Manager • Data & Automation Enthusiast",
         email: "vunguyen2907@gmail.com",
         facebook: "https://facebook.com",
