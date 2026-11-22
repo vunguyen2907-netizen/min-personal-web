@@ -102,7 +102,7 @@ const SupabaseAPI = (() => {
 
     async function fetchSiteSettings() {
         const res = await fetch(
-            `${SUPABASE_CONFIG.url}/rest/v1/site_settings?select=display_name,email,facebook_url,zalo_url,tiktok_url,linkedin_url,github_url&id=eq.1&limit=1`,
+            `${SUPABASE_CONFIG.url}/rest/v1/site_settings?select=display_name,email,facebook_url,zalo_url,tiktok_url,linkedin_url,github_url,gdrive_upload_url&id=eq.1&limit=1`,
             { headers: baseHeaders }
         );
         if (!res.ok) throw new Error(`Settings fetch failed (${res.status})`);

@@ -8,40 +8,129 @@ let adminProjects = [];
 let adminTreks = [];
 let adminMessages = [];
 let trekQuill = null;
+let gdriveUploadUrl = '';
 
-async function uploadImageToSupabase(file, folder = 'articles') {
-    if (!file) throw new Error('Không có tệp ảnh.');
-    if (file.size > 5 * 1024 * 1024) {
-        throw new Error('Ảnh vượt quá giới hạn 5MB. Vui lòng chọn ảnh nhẹ hơn.');
+/**
+ * Tự động chuyển đổi mọi link chia sẻ Google Drive thành link ảnh nhúng trực tiếp siêu nhanh
+ * VD: https://drive.google.com/file/d/FILE_ID/view?usp=sharing -> https://lh3.googleusercontent.com/d/FILE_ID=w1600
+ */
+function normalizeImageUrl(rawUrl) {
+    const url = (rawUrl || '').trim();
+    if (!url) return '';
+    const patterns = [
+        /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
+        /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/,
+        /drive\.google\.com\/uc\?(?:.*&)?id=([a-zA-Z0-9_-]+)/
+    ];
+    for (const regex of patterns) {
+        const match = url.match(regex);
+        if (match && match[1]) {
+            return `https://lh3.googleusercontent.com/d/${match[1]}=w1600`;
+        }
     }
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const safeBase = slugify(file.name.replace(/\.[^/.]+$/, '')).slice(0, 40) || 'image';
-    const path = `${folder}/${Date.now()}-${safeBase}.${ext}`;
+    return url;
+}
 
-    const res = await fetch(`${SUPABASE_CONFIG.url}/storage/v1/object/media/${path}`, {
-        method: 'POST',
-        headers: {
-            apikey: SUPABASE_CONFIG.publishableKey,
-            Authorization: `Bearer ${authSession.access_token}`,
-            'Content-Type': file.type || 'image/jpeg',
-            'x-upsert': 'true'
-        },
-        body: file
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            const base64 = result.includes(',') ? result.split(',')[1] : result;
+            resolve(base64);
+        };
+        reader.onerror = () => reject(new Error('Không đọc được tệp ảnh.'));
+        reader.readAsDataURL(file);
     });
-    if (!res.ok) {
-        const msg = await res.text().catch(() => '');
-        throw new Error(msg || `Tải ảnh thất bại (${res.status})`);
+}
+
+async function uploadImageToGoogleDrive(file) {
+    if (!file) throw new Error('Không có tệp ảnh.');
+    if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Ảnh vượt quá giới hạn 10MB. Vui lòng chọn ảnh nhẹ hơn.');
     }
-    return `${SUPABASE_CONFIG.url}/storage/v1/object/public/media/${path}`;
+    if (!gdriveUploadUrl) {
+        throw new Error('Chưa cấu hình Google Drive Upload Webhook URL. Hãy dán link ảnh Google Drive trực tiếp hoặc cấu hình Webhook trong tab "Hồ sơ & Mạng xã hội".');
+    }
+
+    const base64 = await fileToBase64(file);
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const safeName = `${Date.now()}-${slugify(file.name.replace(/\.[^/.]+$/, '')).slice(0, 40) || 'image'}.${ext}`;
+
+    // Dùng text/plain để tránh CORS preflight khi gọi Google Apps Script Web App
+    const res = await fetch(gdriveUploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+            fileName: safeName,
+            mimeType: file.type || 'image/jpeg',
+            base64
+        })
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.url) {
+        throw new Error(data?.error || 'Tải ảnh lên Google Drive thất bại. Kiểm tra lại quyền triển khai Apps Script (Anyone).');
+    }
+    return data.url;
 }
 
 function initRichTextEditor() {
     const editorEl = document.getElementById('trek-editor');
     if (!editorEl || typeof Quill === 'undefined') return;
 
+    const imgModal = document.getElementById('image-insert-modal');
+    const closeImgModalBtn = document.getElementById('close-img-modal-btn');
+    const modalImgUrl = document.getElementById('modal-img-url');
+    const modalImgInsertBtn = document.getElementById('modal-img-insert-btn');
+    const modalImgFile = document.getElementById('modal-img-file');
+    const modalImgStatus = document.getElementById('modal-img-status');
+
+    function closeImgModal() {
+        imgModal?.classList.add('hidden');
+        imgModal?.classList.remove('flex');
+    }
+
+    function insertImageIntoQuill(url) {
+        const cleanUrl = normalizeImageUrl(url);
+        if (!cleanUrl) return;
+        const range = trekQuill.getSelection(true) || { index: trekQuill.getLength() };
+        trekQuill.insertEmbed(range.index, 'image', cleanUrl, 'user');
+        trekQuill.setSelection(range.index + 1);
+        closeImgModal();
+    }
+
+    closeImgModalBtn?.addEventListener('click', closeImgModal);
+    imgModal?.addEventListener('click', (e) => {
+        if (e.target === imgModal) closeImgModal();
+    });
+
+    modalImgInsertBtn?.addEventListener('click', () => {
+        const val = modalImgUrl.value.trim();
+        if (!val) return;
+        insertImageIntoQuill(val);
+        modalImgUrl.value = '';
+    });
+
+    modalImgFile?.addEventListener('change', async () => {
+        const file = modalImgFile.files?.[0];
+        if (!file) return;
+        if (modalImgStatus) modalImgStatus.textContent = 'Đang tải ảnh lên Google Drive...';
+        try {
+            const url = await uploadImageToGoogleDrive(file);
+            if (modalImgStatus) modalImgStatus.textContent = '✓ Đã tải lên Google Drive!';
+            insertImageIntoQuill(url);
+        } catch (err) {
+            if (modalImgStatus) modalImgStatus.textContent = `✗ ${err.message}`;
+            showToast(err.message, 'error');
+        } finally {
+            modalImgFile.value = '';
+        }
+    });
+
     trekQuill = new Quill('#trek-editor', {
         theme: 'snow',
-        placeholder: 'Bắt đầu viết nhật ký hành trình, định dạng tiêu đề, in đậm, trích dẫn hoặc chèn ảnh...',
+        placeholder: 'Bắt đầu viết nhật ký hành trình, định dạng tiêu đề, in đậm, trích dẫn hoặc chèn ảnh từ Google Drive...',
         modules: {
             toolbar: {
                 container: [
@@ -56,26 +145,12 @@ function initRichTextEditor() {
                 ],
                 handlers: {
                     image: () => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.click();
-                        input.onchange = async () => {
-                            const file = input.files?.[0];
-                            if (!file) return;
-                            const statusEl = document.getElementById('editor-upload-status');
-                            if (statusEl) statusEl.textContent = 'Đang tải ảnh lên Supabase Storage...';
-                            try {
-                                const url = await uploadImageToSupabase(file, 'articles');
-                                const range = trekQuill.getSelection(true) || { index: trekQuill.getLength() };
-                                trekQuill.insertEmbed(range.index, 'image', url, 'user');
-                                trekQuill.setSelection(range.index + 1);
-                                if (statusEl) statusEl.textContent = '✓ Đã chèn ảnh thành công!';
-                            } catch (err) {
-                                showToast(err.message, 'error');
-                                if (statusEl) statusEl.textContent = '✗ Lỗi tải ảnh.';
-                            }
-                        };
+                        if (modalImgStatus) modalImgStatus.textContent = gdriveUploadUrl
+                            ? 'Đã kết nối Google Drive Webhook — chọn ảnh từ máy để upload trực tiếp.'
+                            : 'Chưa cấu hình Webhook: hãy dùng Cách 1 (dán link Google Drive) hoặc cấu hình Webhook ở tab Hồ sơ.';
+                        imgModal?.classList.remove('hidden');
+                        imgModal?.classList.add('flex');
+                        modalImgUrl?.focus();
                     }
                 }
             }
@@ -475,21 +550,30 @@ function initTrekForm() {
         }
     });
 
-    imageInput?.addEventListener('input', () => updateCoverPreview(imageInput.value));
+    imageInput?.addEventListener('change', () => {
+        const normalized = normalizeImageUrl(imageInput.value);
+        if (normalized !== imageInput.value) {
+            imageInput.value = normalized;
+            const statusEl = document.getElementById('trek-cover-status');
+            if (statusEl) statusEl.textContent = '✓ Đã tự động chuyển đổi link Google Drive sang link ảnh hiển thị!';
+        }
+        updateCoverPreview(normalized);
+    });
+    imageInput?.addEventListener('input', () => updateCoverPreview(normalizeImageUrl(imageInput.value)));
 
     coverUpload?.addEventListener('change', async () => {
         const file = coverUpload.files?.[0];
         if (!file) return;
         const statusEl = document.getElementById('trek-cover-status');
-        if (statusEl) statusEl.textContent = 'Đang tải ảnh bìa...';
+        if (statusEl) statusEl.textContent = 'Đang tải ảnh bìa lên Google Drive...';
         try {
-            const url = await uploadImageToSupabase(file, 'covers');
+            const url = await uploadImageToGoogleDrive(file);
             imageInput.value = url;
             updateCoverPreview(url);
-            if (statusEl) statusEl.textContent = '✓ Đã tải ảnh bìa lên Supabase!';
+            if (statusEl) statusEl.textContent = '✓ Đã tải ảnh bìa lên Google Drive!';
         } catch (err) {
             showToast(err.message, 'error');
-            if (statusEl) statusEl.textContent = '✗ Tải ảnh thất bại.';
+            if (statusEl) statusEl.textContent = `✗ ${err.message}`;
         } finally {
             coverUpload.value = '';
         }
@@ -550,7 +634,7 @@ function initTrekForm() {
             tag: document.getElementById('trek-tag').value.trim(),
             title: document.getElementById('trek-title').value.trim(),
             excerpt: document.getElementById('trek-excerpt').value.trim(),
-            image_url: document.getElementById('trek-image').value.trim(),
+            image_url: normalizeImageUrl(document.getElementById('trek-image').value),
             sort_order: Number(document.getElementById('trek-sort').value) || 0,
             is_published: document.getElementById('trek-published').checked,
             featured: document.getElementById('trek-featured').checked,
@@ -647,11 +731,15 @@ async function loadSettings() {
     document.getElementById('set-tiktok').value = settings.tiktok_url || '';
     document.getElementById('set-linkedin').value = settings.linkedin_url || '';
     document.getElementById('set-github').value = settings.github_url || '';
+    gdriveUploadUrl = settings.gdrive_upload_url || '';
+    const gdriveInput = document.getElementById('set-gdrive-url');
+    if (gdriveInput) gdriveInput.value = gdriveUploadUrl;
 }
 
 function initSettingsForm() {
     document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const nextGdriveUrl = (document.getElementById('set-gdrive-url')?.value || '').trim();
         const payload = {
             email: document.getElementById('set-email').value.trim(),
             facebook_url: document.getElementById('set-facebook').value.trim(),
@@ -659,6 +747,7 @@ function initSettingsForm() {
             tiktok_url: document.getElementById('set-tiktok').value.trim(),
             linkedin_url: document.getElementById('set-linkedin').value.trim(),
             github_url: document.getElementById('set-github').value.trim(),
+            gdrive_upload_url: nextGdriveUrl,
             updated_at: new Date().toISOString()
         };
         const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/site_settings?id=eq.1`, {
@@ -667,7 +756,8 @@ function initSettingsForm() {
             body: JSON.stringify(payload)
         });
         if (!res.ok) return showToast('Lưu cấu hình thất bại.', 'error');
-        showToast('Đã cập nhật hồ sơ & liên kết mạng xã hội!');
+        gdriveUploadUrl = nextGdriveUrl;
+        showToast('Đã cập nhật hồ sơ, mạng xã hội & cấu hình Google Drive!');
     });
 }
 
