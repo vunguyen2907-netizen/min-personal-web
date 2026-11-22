@@ -35,7 +35,7 @@ const SupabaseAPI = (() => {
 
     async function fetchTrekkingLogs() {
         const res = await fetch(
-            `${SUPABASE_CONFIG.url}/rest/v1/trekking_logs?select=slug,tag,title,excerpt,image_url,featured,stats,story&is_published=eq.true&order=sort_order.asc`,
+            `${SUPABASE_CONFIG.url}/rest/v1/trekking_logs?select=slug,tag,title,excerpt,image_url,featured,stats,story,content_html&is_published=eq.true&order=sort_order.asc`,
             { headers: baseHeaders }
         );
         if (!res.ok) throw new Error(`Trekking logs fetch failed (${res.status})`);
@@ -48,7 +48,8 @@ const SupabaseAPI = (() => {
             image: row.image_url,
             featured: Boolean(row.featured),
             stats: row.stats,
-            story: row.story || []
+            story: row.story || [],
+            contentHtml: row.content_html || ''
         }));
     }
 

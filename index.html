@@ -9,14 +9,23 @@
         content="Trang web cá nhân phi thương mại của Vũ Titan — Area Manager đam mê dữ liệu, tự động hóa vận hành bán lẻ và những chuyến leo núi hàng quý.">
     <meta name="author" content="Vũ Titan">
 
-    <!-- Open Graph / Social Sharing -->
+    <!-- Open Graph / Social Sharing (Facebook, Zalo, LinkedIn) -->
+    <link rel="canonical" href="https://vunguyen2907.id.vn/">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://vunguyen2907.id.vn/">
+    <meta property="og:site_name" content="Vũ Titan — Data & Trails">
+    <meta property="og:locale" content="vi_VN">
     <meta property="og:title" content="Vũ Titan | Data-Driven Leader • Nature-Driven Soul">
     <meta property="og:description"
-        content="Quản trị bằng Dữ liệu — Cân bằng bằng Thiên nhiên. Hồ sơ năng lực Work & Tech kết hợp Nhật ký Leo núi Trails & Tales.">
+        content="Quản trị bằng Dữ liệu — Cân bằng bằng Thiên nhiên. Hồ sơ năng lực Work & Tech (Power BI, Apps Script, Supabase, ESP32) kết hợp Nhật ký Leo núi & Checklist Balo 30L.">
     <meta property="og:image"
         content="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Vũ Titan | Data-Driven Leader • Nature-Driven Soul">
+    <meta name="twitter:description" content="Quản trị bằng Dữ liệu — Cân bằng bằng Thiên nhiên.">
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1200&auto=format&fit=crop">
 
     <!-- Inline SVG Favicon -->
     <link rel="icon" type="image/svg+xml"
@@ -432,9 +441,12 @@
                             <p class="text-sm text-gray-600 mt-1">Thử đánh dấu đồ cần mang cho chuyến đi 3–4 ngày (tự
                                 động lưu trên trình duyệt của bạn).</p>
                         </div>
-                        <div class="flex items-center gap-4">
-                            <span id="checklist-progress-text" class="text-xs font-mono font-semibold text-forest">0/8
-                                món (0%)</span>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span id="checklist-progress-text" class="text-xs font-mono font-semibold text-forest">0/8 món (0%)</span>
+                            <button id="checklist-share-btn" type="button"
+                                class="px-3 py-1 text-xs font-mono border border-forest/20 text-forest hover:border-terracotta hover:text-terracotta transition-colors">
+                                Chia sẻ Checklist
+                            </button>
                             <button id="checklist-reset-btn" type="button"
                                 class="text-xs font-mono text-terracotta hover:underline">
                                 Đặt lại
@@ -640,6 +652,9 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
         </svg>
     </button>
+
+    <!-- DOMPurify for safe Rich Text rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
 
     <!-- Scripts -->
     <script src="assets/js/data.js"></script>

@@ -7,6 +7,81 @@ let authSession = null;
 let adminProjects = [];
 let adminTreks = [];
 let adminMessages = [];
+let trekQuill = null;
+
+async function uploadImageToSupabase(file, folder = 'articles') {
+    if (!file) throw new Error('Không có tệp ảnh.');
+    if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Ảnh vượt quá giới hạn 5MB. Vui lòng chọn ảnh nhẹ hơn.');
+    }
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const safeBase = slugify(file.name.replace(/\.[^/.]+$/, '')).slice(0, 40) || 'image';
+    const path = `${folder}/${Date.now()}-${safeBase}.${ext}`;
+
+    const res = await fetch(`${SUPABASE_CONFIG.url}/storage/v1/object/media/${path}`, {
+        method: 'POST',
+        headers: {
+            apikey: SUPABASE_CONFIG.publishableKey,
+            Authorization: `Bearer ${authSession.access_token}`,
+            'Content-Type': file.type || 'image/jpeg',
+            'x-upsert': 'true'
+        },
+        body: file
+    });
+    if (!res.ok) {
+        const msg = await res.text().catch(() => '');
+        throw new Error(msg || `Tải ảnh thất bại (${res.status})`);
+    }
+    return `${SUPABASE_CONFIG.url}/storage/v1/object/public/media/${path}`;
+}
+
+function initRichTextEditor() {
+    const editorEl = document.getElementById('trek-editor');
+    if (!editorEl || typeof Quill === 'undefined') return;
+
+    trekQuill = new Quill('#trek-editor', {
+        theme: 'snow',
+        placeholder: 'Bắt đầu viết nhật ký hành trình, định dạng tiêu đề, in đậm, trích dẫn hoặc chèn ảnh...',
+        modules: {
+            toolbar: {
+                container: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ color: [] }, { background: [] }],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    ['blockquote', 'code-block'],
+                    ['link', 'image'],
+                    ['clean']
+                ],
+                handlers: {
+                    image: () => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.click();
+                        input.onchange = async () => {
+                            const file = input.files?.[0];
+                            if (!file) return;
+                            const statusEl = document.getElementById('editor-upload-status');
+                            if (statusEl) statusEl.textContent = 'Đang tải ảnh lên Supabase Storage...';
+                            try {
+                                const url = await uploadImageToSupabase(file, 'articles');
+                                const range = trekQuill.getSelection(true) || { index: trekQuill.getLength() };
+                                trekQuill.insertEmbed(range.index, 'image', url, 'user');
+                                trekQuill.setSelection(range.index + 1);
+                                if (statusEl) statusEl.textContent = '✓ Đã chèn ảnh thành công!';
+                            } catch (err) {
+                                showToast(err.message, 'error');
+                                if (statusEl) statusEl.textContent = '✗ Lỗi tải ảnh.';
+                            }
+                        };
+                    }
+                }
+            }
+        }
+    });
+}
 
 function getAuthHeaders(extra = {}) {
     return {
@@ -53,6 +128,7 @@ function escapeHtml(str = '') {
 document.addEventListener('DOMContentLoaded', () => {
     initAuth();
     initTabs();
+    initRichTextEditor();
     initProjectForm();
     initTrekForm();
     initSettingsForm();
@@ -369,16 +445,80 @@ async function loadTreks() {
     `).join('') || '<p class="text-sm text-gray-500">Chưa có bài viết nào.</p>';
 }
 
+function updateCoverPreview(url) {
+    const wrap = document.getElementById('trek-cover-preview-wrap');
+    const img = document.getElementById('trek-cover-preview');
+    if (!wrap || !img) return;
+    if (url && url.trim()) {
+        img.src = url.trim();
+        wrap.classList.remove('hidden');
+    } else {
+        wrap.classList.add('hidden');
+    }
+}
+
 function initTrekForm() {
     const form = document.getElementById('trek-form');
     const newBtn = document.getElementById('new-trek-btn');
     const cancelBtn = document.getElementById('cancel-trek-btn');
     const titleInput = document.getElementById('trek-title');
     const slugInput = document.getElementById('trek-slug');
+    const imageInput = document.getElementById('trek-image');
+    const coverUpload = document.getElementById('trek-cover-upload');
+    const previewBtn = document.getElementById('preview-trek-btn');
+    const previewModal = document.getElementById('preview-modal');
+    const closePreviewBtn = document.getElementById('close-preview-btn');
 
     titleInput?.addEventListener('input', () => {
         if (!document.getElementById('trek-id').value) {
             slugInput.value = slugify(titleInput.value);
+        }
+    });
+
+    imageInput?.addEventListener('input', () => updateCoverPreview(imageInput.value));
+
+    coverUpload?.addEventListener('change', async () => {
+        const file = coverUpload.files?.[0];
+        if (!file) return;
+        const statusEl = document.getElementById('trek-cover-status');
+        if (statusEl) statusEl.textContent = 'Đang tải ảnh bìa...';
+        try {
+            const url = await uploadImageToSupabase(file, 'covers');
+            imageInput.value = url;
+            updateCoverPreview(url);
+            if (statusEl) statusEl.textContent = '✓ Đã tải ảnh bìa lên Supabase!';
+        } catch (err) {
+            showToast(err.message, 'error');
+            if (statusEl) statusEl.textContent = '✗ Tải ảnh thất bại.';
+        } finally {
+            coverUpload.value = '';
+        }
+    });
+
+    previewBtn?.addEventListener('click', () => {
+        const title = titleInput.value.trim() || 'Chưa có tiêu đề';
+        const imgUrl = imageInput.value.trim();
+        const htmlContent = trekQuill ? trekQuill.root.innerHTML : '';
+        const safeHtml = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(htmlContent) : htmlContent;
+        document.getElementById('preview-modal-body').innerHTML = `
+            <div class="space-y-5">
+                ${imgUrl ? `<img src="${escapeHtml(imgUrl)}" alt="" class="w-full h-56 object-cover">` : ''}
+                <h2 class="text-2xl font-bold text-forest">${escapeHtml(title)}</h2>
+                <div class="article-prose">${safeHtml}</div>
+            </div>
+        `;
+        previewModal.classList.remove('hidden');
+        previewModal.classList.add('flex');
+    });
+
+    closePreviewBtn?.addEventListener('click', () => {
+        previewModal.classList.add('hidden');
+        previewModal.classList.remove('flex');
+    });
+    previewModal?.addEventListener('click', (e) => {
+        if (e.target === previewModal) {
+            previewModal.classList.add('hidden');
+            previewModal.classList.remove('flex');
         }
     });
 
@@ -387,6 +527,8 @@ function initTrekForm() {
         document.getElementById('trek-id').value = '';
         document.getElementById('trek-published').checked = true;
         document.getElementById('trek-form-title').textContent = 'Viết nhật ký mới';
+        if (trekQuill) trekQuill.setContents([]);
+        updateCoverPreview('');
         form.classList.remove('hidden');
         form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
@@ -396,10 +538,12 @@ function initTrekForm() {
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('trek-id').value;
-        const paragraphs = document.getElementById('trek-story').value
-            .split(/\n\s*\n/)
-            .map(s => s.trim())
-            .filter(Boolean);
+        const contentHtml = trekQuill ? trekQuill.root.innerHTML.trim() : '';
+        const plainText = trekQuill ? trekQuill.getText().trim() : '';
+        if (!plainText && !contentHtml.includes('<img')) {
+            return showToast('Vui lòng nhập nội dung bài viết.', 'error');
+        }
+        const paragraphs = plainText.split(/\n+/).map(s => s.trim()).filter(Boolean);
 
         const payload = {
             slug: document.getElementById('trek-slug').value.trim(),
@@ -416,7 +560,8 @@ function initTrekForm() {
                 difficulty: document.getElementById('trek-difficulty').value.trim() || '-',
                 location: document.getElementById('trek-location').value.trim() || '-'
             },
-            story: paragraphs
+            story: paragraphs,
+            content_html: contentHtml
         };
 
         const url = id
@@ -444,13 +589,19 @@ window.editTrek = (id) => {
     document.getElementById('trek-slug').value = t.slug;
     document.getElementById('trek-tag').value = t.tag;
     document.getElementById('trek-image').value = t.image_url;
+    updateCoverPreview(t.image_url);
     document.getElementById('trek-sort').value = t.sort_order;
     document.getElementById('trek-elevation').value = t.stats?.elevation || '';
     document.getElementById('trek-distance').value = t.stats?.distance || '';
     document.getElementById('trek-difficulty').value = t.stats?.difficulty || '';
     document.getElementById('trek-location').value = t.stats?.location || '';
     document.getElementById('trek-excerpt').value = t.excerpt;
-    document.getElementById('trek-story').value = (t.story || []).join('\n\n');
+    if (trekQuill) {
+        const htmlToLoad = t.content_html && t.content_html.trim()
+            ? t.content_html
+            : (t.story || []).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+        trekQuill.clipboard.dangerouslyPasteHTML(htmlToLoad);
+    }
     document.getElementById('trek-published').checked = Boolean(t.is_published);
     document.getElementById('trek-featured').checked = Boolean(t.featured);
     document.getElementById('trek-form-title').textContent = `Chỉnh sửa: ${t.title}`;

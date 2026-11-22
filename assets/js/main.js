@@ -27,13 +27,52 @@ document.addEventListener('DOMContentLoaded', () => {
     initProjectFilters();
     initModalHandlers();
     initCopyEmail();
+    initChecklistShare();
     initContactForm();
     initScrollReveal();
     initBackToTop();
+    handleDeepLinkHash();
 
     // Đồng bộ dữ liệu động & lượt xem từ Supabase
     syncWithSupabase();
 });
+
+let deepLinkHandled = false;
+
+function handleDeepLinkHash() {
+    if (deepLinkHandled) return;
+    const hash = window.location.hash || '';
+    if (hash.startsWith('#trek=')) {
+        const slug = decodeURIComponent(hash.slice(6));
+        const log = currentTrekkingLogs.find(l => l.id === slug);
+        if (log) {
+            deepLinkHandled = true;
+            openTrekModal(log);
+        }
+    } else if (hash.startsWith('#project=')) {
+        const slug = decodeURIComponent(hash.slice(9));
+        const proj = currentProjects.find(p => p.id === slug);
+        if (proj) {
+            deepLinkHandled = true;
+            openProjectModal(proj);
+        }
+    }
+}
+
+function initChecklistShare() {
+    const btn = document.getElementById('checklist-share-btn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        const shareUrl = `${window.location.origin}${window.location.pathname}#healing`;
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            const oldText = btn.textContent;
+            btn.textContent = '✓ Đã sao chép link!';
+            setTimeout(() => { btn.textContent = oldText; }, 2200);
+            trackGAEvent('share_content', { content_type: 'checklist_30l', method: 'copy_link' });
+        } catch (_) {}
+    });
+}
 
 async function syncWithSupabase() {
     if (typeof SupabaseAPI === 'undefined') return;
@@ -55,6 +94,8 @@ async function syncWithSupabase() {
             currentTrekkingLogs = treks;
             renderTrekkingLogs();
         }
+
+        handleDeepLinkHash();
 
         if (settings) {
             applySiteSettings(settings);
@@ -440,6 +481,47 @@ function closeModal() {
     document.body.style.overflow = '';
 }
 
+function buildShareBar(shareHash, shareTitle, contentType) {
+    const shareUrl = `${window.location.origin}${window.location.pathname}${shareHash}`;
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+    return `
+        <div class="border-t border-forest/15 pt-5 mt-6 flex flex-wrap items-center justify-between gap-3">
+            <span class="text-xs font-mono uppercase tracking-wider text-gray-500">Chia sẻ bài viết này</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    data-share-url="${shareUrl}"
+                    data-share-type="${contentType}"
+                    class="modal-copy-share-btn px-3.5 py-2 text-xs font-mono border border-forest/25 text-forest hover:border-terracotta hover:text-terracotta transition-colors"
+                >
+                    Sao chép link
+                </button>
+                <a
+                    href="${fbUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="px-3.5 py-2 text-xs font-mono bg-forest text-rustic-bg hover:bg-forest-light transition-colors"
+                >
+                    Chia sẻ Facebook ↗
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+function bindModalShareButtons() {
+    document.querySelectorAll('.modal-copy-share-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(btn.dataset.shareUrl);
+                btn.textContent = '✓ Đã sao chép link!';
+                setTimeout(() => { btn.textContent = 'Sao chép link'; }, 2200);
+                trackGAEvent('share_content', { content_type: btn.dataset.shareType, method: 'copy_link' });
+            } catch (_) {}
+        });
+    });
+}
+
 function openProjectModal(project) {
     const cs = project.caseStudy;
     const html = `
@@ -472,13 +554,20 @@ function openProjectModal(project) {
                     ${cs.impact.map(imp => `<li class="flex items-start gap-2"><span class="text-terracotta-light">✓</span><span>${imp}</span></li>`).join('')}
                 </ul>
             </div>
+            ${buildShareBar(`#project=${encodeURIComponent(project.id)}`, project.title, 'case_study')}
         </div>
     `;
     openModal(project.title, `Case Study • ${project.categoryLabel}`, html);
+    bindModalShareButtons();
     trackGAEvent('view_case_study', { project_id: project.id, project_title: project.title });
 }
 
 function openTrekModal(log) {
+    const hasRichHtml = Boolean(log.contentHtml && log.contentHtml.replace(/<[^>]*>/g, '').trim());
+    const articleBody = hasRichHtml
+        ? `<div class="article-prose">${typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(log.contentHtml) : log.contentHtml}</div>`
+        : `<div class="article-prose">${(log.story || []).map(p => `<p>${p}</p>`).join('')}</div>`;
+
     const html = `
         <div class="space-y-6">
             <img src="${log.image}" alt="${log.title}" class="w-full h-56 md:h-72 object-cover">
@@ -500,12 +589,12 @@ function openTrekModal(log) {
                     <div class="font-bold text-forest text-sm mt-0.5">${log.stats.location}</div>
                 </div>
             </div>
-            <div class="space-y-4 text-sm md:text-base text-gray-700 leading-relaxed">
-                ${log.story.map(p => `<p>${p}</p>`).join('')}
-            </div>
+            ${articleBody}
+            ${buildShareBar(`#trek=${encodeURIComponent(log.id)}`, log.title, 'trekking_log')}
         </div>
     `;
     openModal(log.title, log.tag, html);
+    bindModalShareButtons();
     trackGAEvent('view_trekking_log', { trek_id: log.id, trek_title: log.title });
 }
 

@@ -10,6 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Quill Rich Text Editor v2 -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -280,13 +283,24 @@
                             <input id="trek-tag" type="text" required placeholder="Trekking Log • Q4" class="w-full px-3 py-2 border border-forest/20 text-sm">
                         </div>
                         <div>
-                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Link ảnh bìa (URL) *</label>
-                            <input id="trek-image" type="url" required placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 border border-forest/20 text-sm">
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Ảnh bìa (URL hoặc tải từ máy) *</label>
+                            <div class="flex gap-2">
+                                <input id="trek-image" type="url" required placeholder="https://..." class="w-full px-3 py-2 border border-forest/20 text-sm">
+                                <label class="shrink-0 px-3 py-2 bg-forest hover:bg-forest-light text-rustic-bg text-xs font-semibold cursor-pointer inline-flex items-center">
+                                    <span>Tải ảnh</span>
+                                    <input id="trek-cover-upload" type="file" accept="image/*" class="hidden">
+                                </label>
+                            </div>
+                            <p id="trek-cover-status" class="text-[11px] font-mono text-gray-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Thứ tự hiển thị</label>
                             <input id="trek-sort" type="number" value="10" class="w-full px-3 py-2 border border-forest/20 text-sm font-mono">
                         </div>
+                    </div>
+                    <!-- Live Cover Thumbnail Preview -->
+                    <div id="trek-cover-preview-wrap" class="hidden">
+                        <img id="trek-cover-preview" src="" alt="Xem trước ảnh bìa" class="h-36 w-full sm:w-64 object-cover border border-forest/15">
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
@@ -311,8 +325,13 @@
                         <textarea id="trek-excerpt" rows="2" required class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
                     </div>
                     <div>
-                        <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Nội dung bài viết (mỗi đoạn cách nhau bằng 1 dòng trống) *</label>
-                        <textarea id="trek-story" rows="6" required class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold">Nội dung bài viết (Full Rich-Text Editor) *</label>
+                            <span id="editor-upload-status" class="text-[11px] font-mono text-terracotta">Mẹo: Bấm biểu tượng ảnh trên thanh công cụ để tải ảnh trực tiếp từ máy!</span>
+                        </div>
+                        <div class="bg-white border border-forest/20">
+                            <div id="trek-editor" style="min-height: 280px;"></div>
+                        </div>
                     </div>
                     <div class="flex flex-wrap items-center justify-between gap-4 pt-2">
                         <div class="flex items-center gap-6">
@@ -325,9 +344,14 @@
                                 <span>Bài nổi bật</span>
                             </label>
                         </div>
-                        <button type="submit" class="px-6 py-2.5 bg-forest hover:bg-forest-light text-rustic-bg text-sm font-semibold">
-                            Lưu &amp; Đăng bài
-                        </button>
+                        <div class="flex items-center gap-3">
+                            <button id="preview-trek-btn" type="button" class="px-4 py-2.5 border border-forest text-forest hover:bg-forest/5 text-sm font-semibold">
+                                Xem trước
+                            </button>
+                            <button type="submit" class="px-6 py-2.5 bg-forest hover:bg-forest-light text-rustic-bg text-sm font-semibold">
+                                Lưu &amp; Đăng bài
+                            </button>
+                        </div>
                     </div>
                 </form>
 
@@ -390,6 +414,19 @@
         </main>
     </div>
 
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl max-h-[88vh] overflow-y-auto shadow-2xl border border-forest/20">
+            <div class="sticky top-0 bg-rustic-bg border-b border-forest/15 px-6 py-4 flex items-center justify-between">
+                <span class="text-xs font-mono uppercase tracking-wider text-terracotta font-semibold">Xem trước bài viết</span>
+                <button id="close-preview-btn" type="button" class="text-forest hover:text-terracotta font-bold text-lg">✕</button>
+            </div>
+            <div id="preview-modal-body" class="p-6 sm:p-8"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/admin.js"></script>
 </body>
