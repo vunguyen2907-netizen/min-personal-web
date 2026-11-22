@@ -9,6 +9,9 @@ const SITE_DATA = {
         brandMark: "M",
         role: "Area Manager • Data & Automation Enthusiast",
         email: "vunguyen2907@gmail.com",
+        facebook: "https://facebook.com",
+        zalo: "https://zalo.me",
+        tiktok: "https://tiktok.com",
         linkedin: "https://linkedin.com/in/yourprofile",
         github: "https://github.com/vunguyen2907-netizen/min-personal-web",
         domain: "vunguyen2907.id.vn"

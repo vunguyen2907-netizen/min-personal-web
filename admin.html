@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin CMS | Min Personal Web</title>
+    <meta name="robots" content="noindex, nofollow">
+
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%232C4A3B'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Inter,sans-serif' font-weight='700' font-size='34' fill='%23F7F5F0'%3EM%3C/text%3E%3Ccircle cx='49' cy='46' r='5' fill='%23E89B6C'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'rustic-bg': '#F7F5F0',
+                        'forest': '#2C4A3B',
+                        'forest-light': '#3c6350',
+                        'terracotta': '#A65D37',
+                        'terracotta-hover': '#8e4f2f',
+                        'terracotta-light': '#E89B6C',
+                        'dark-gray': '#2d3748',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-sans bg-rustic-bg text-dark-gray antialiased min-h-screen">
+
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 bg-forest">
+        <div class="w-full max-w-md bg-rustic-bg p-8 shadow-2xl border border-forest/20">
+            <div class="mb-6">
+                <a href="index.html" class="text-xs font-mono text-terracotta hover:underline">← Quay lại trang chủ</a>
+                <h1 class="text-2xl font-bold text-forest mt-3">Admin CMS</h1>
+                <p class="text-sm text-gray-600 mt-1">Đăng nhập tài khoản quản trị để viết bài và chỉnh sửa nội dung.</p>
+            </div>
+
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="login-email" class="block text-xs font-mono uppercase text-forest font-semibold mb-1.5">Email quản trị</label>
+                    <input
+                        id="login-email"
+                        type="email"
+                        required
+                        value="vunguyen2907@gmail.com"
+                        class="w-full px-3.5 py-2.5 bg-white border border-forest/20 text-sm focus:outline-none focus:border-terracotta"
+                    >
+                </div>
+                <div>
+                    <label for="login-password" class="block text-xs font-mono uppercase text-forest font-semibold mb-1.5">Mật khẩu</label>
+                    <input
+                        id="login-password"
+                        type="password"
+                        required
+                        placeholder="Nhập mật khẩu Supabase Auth..."
+                        class="w-full px-3.5 py-2.5 bg-white border border-forest/20 text-sm focus:outline-none focus:border-terracotta"
+                    >
+                </div>
+                <button
+                    id="login-submit-btn"
+                    type="submit"
+                    class="w-full py-3 bg-forest hover:bg-forest-light text-rustic-bg font-semibold text-sm transition-colors disabled:opacity-50"
+                >
+                    Đăng nhập
+                </button>
+                <p id="login-error" class="text-xs text-red-700 font-medium hidden"></p>
+            </form>
+
+            <div class="mt-6 pt-5 border-t border-forest/15 text-xs text-gray-600 leading-relaxed">
+                <strong>Lần đầu đăng nhập?</strong> Vào
+                <a href="https://supabase.com/dashboard/project/hlsxhrtwqlqxsmzqfigc/auth/users" target="_blank" rel="noopener noreferrer" class="text-terracotta underline font-medium">Supabase → Authentication → Users</a>
+                → bấm <strong>Add user → Create new user</strong> cho email <code>vunguyen2907@gmail.com</code> (tick <em>Auto Confirm User</em>) để đặt mật khẩu.
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ADMIN DASHBOARD ==================== -->
+    <div id="admin-app" class="hidden min-h-screen flex flex-col">
+        <!-- Top Bar -->
+        <header class="bg-forest text-rustic-bg border-b border-white/10 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl font-extrabold tracking-tight">Min<span class="text-terracotta-light">.</span></span>
+                    <span class="text-xs font-mono uppercase tracking-wider px-2 py-0.5 bg-white/10 text-terracotta-light">Admin CMS</span>
+                </div>
+                <div class="flex items-center gap-4 text-xs">
+                    <span id="admin-user-email" class="hidden sm:inline font-mono text-gray-300"></span>
+                    <a href="index.html" target="_blank" class="px-3 py-1.5 border border-white/20 hover:border-terracotta-light hover:text-terracotta-light transition-colors">
+                        Xem Website ↗
+                    </a>
+                    <button id="logout-btn" type="button" class="px-3 py-1.5 bg-terracotta hover:bg-terracotta-hover text-white font-medium transition-colors">
+                        Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+            <!-- Stats Strip -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white border border-forest/15 p-5">
+                    <div class="text-xs font-mono uppercase text-gray-500">Dự án Work &amp; Tech</div>
+                    <div id="stat-projects" class="text-2xl font-bold text-forest font-mono mt-1">--</div>
+                </div>
+                <div class="bg-white border border-forest/15 p-5">
+                    <div class="text-xs font-mono uppercase text-gray-500">Nhật ký Leo núi</div>
+                    <div id="stat-treks" class="text-2xl font-bold text-forest font-mono mt-1">--</div>
+                </div>
+                <div class="bg-white border border-forest/15 p-5">
+                    <div class="text-xs font-mono uppercase text-gray-500">Lượt xem (Supabase)</div>
+                    <div id="stat-views" class="text-2xl font-bold text-terracotta font-mono mt-1">--</div>
+                </div>
+                <div class="bg-white border border-forest/15 p-5">
+                    <div class="text-xs font-mono uppercase text-gray-500">Lời nhắn Liên hệ</div>
+                    <div id="stat-messages" class="text-2xl font-bold text-forest font-mono mt-1">--</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex flex-wrap gap-2 border-b border-forest/15 pb-3 mb-6">
+                <button type="button" data-tab="projects" class="admin-tab px-4 py-2 text-sm font-semibold bg-forest text-rustic-bg">
+                    Dự án (Work &amp; Tech)
+                </button>
+                <button type="button" data-tab="treks" class="admin-tab px-4 py-2 text-sm font-semibold bg-white border border-forest/15 text-forest hover:border-terracotta">
+                    Nhật ký Leo núi
+                </button>
+                <button type="button" data-tab="settings" class="admin-tab px-4 py-2 text-sm font-semibold bg-white border border-forest/15 text-forest hover:border-terracotta">
+                    Hồ sơ &amp; Mạng xã hội
+                </button>
+                <button type="button" data-tab="messages" class="admin-tab px-4 py-2 text-sm font-semibold bg-white border border-forest/15 text-forest hover:border-terracotta">
+                    Hộp thư Liên hệ
+                </button>
+            </div>
+
+            <!-- Global Toast -->
+            <div id="admin-toast" class="hidden mb-6 px-4 py-3 text-sm font-medium border"></div>
+
+            <!-- TAB 1: PROJECTS -->
+            <section id="tab-projects" class="tab-panel space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-forest">Quản lý Dự án &amp; Case Study</h2>
+                        <p class="text-xs text-gray-600 mt-0.5">Thêm mới, chỉnh sửa hoặc ẩn/hiện dự án trên trang chủ.</p>
+                    </div>
+                    <button id="new-project-btn" type="button" class="px-4 py-2.5 bg-terracotta hover:bg-terracotta-hover text-white text-sm font-semibold">
+                        + Thêm dự án mới
+                    </button>
+                </div>
+
+                <!-- Project Editor Form (Collapsible) -->
+                <form id="project-form" class="hidden bg-white border border-forest/20 p-6 space-y-4 shadow-sm">
+                    <div class="flex items-center justify-between border-b border-forest/10 pb-3">
+                        <h3 id="project-form-title" class="font-bold text-forest">Thêm dự án mới</h3>
+                        <button id="cancel-project-btn" type="button" class="text-xs font-mono text-gray-500 hover:text-red-600">Đóng ✕</button>
+                    </div>
+                    <input type="hidden" id="proj-id">
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Tên dự án *</label>
+                            <input id="proj-title" type="text" required class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Slug (URL định danh) *</label>
+                            <input id="proj-slug" type="text" required placeholder="vi-du-du-an-moi" class="w-full px-3 py-2 border border-forest/20 text-sm font-mono">
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Nhóm lọc</label>
+                            <select id="proj-category" class="w-full px-3 py-2 border border-forest/20 text-sm bg-white">
+                                <option value="data">Data &amp; BI (data)</option>
+                                <option value="automation">Automation (automation)</option>
+                                <option value="iot">IoT / Hardware (iot)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Nhãn hiển thị *</label>
+                            <input id="proj-category-label" type="text" required value="Data &amp; BI" class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Icon</label>
+                            <select id="proj-icon" class="w-full px-3 py-2 border border-forest/20 text-sm bg-white">
+                                <option value="chart">Biểu đồ (chart)</option>
+                                <option value="code">Code (code)</option>
+                                <option value="chip">Phần cứng (chip)</option>
+                                <option value="database">Database (database)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Thứ tự hiển thị</label>
+                            <input id="proj-sort" type="number" value="10" class="w-full px-3 py-2 border border-forest/20 text-sm font-mono">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Mô tả ngắn *</label>
+                        <textarea id="proj-short-desc" rows="2" required class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Tags (ngăn cách bởi dấu phẩy)</label>
+                        <input id="proj-tags" type="text" placeholder="Power BI, SQL, Supabase" class="w-full px-3 py-2 border border-forest/20 text-sm">
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">01. Bài toán thực tế *</label>
+                            <textarea id="proj-challenge" rows="3" required class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">02. Giải pháp triển khai *</label>
+                            <textarea id="proj-solution" rows="3" required class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">03. Kiến trúc &amp; Công cụ (mỗi dòng 1 bước)</label>
+                            <textarea id="proj-arch" rows="3" placeholder="Bước 1&#10;Bước 2" class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">04. Kết quả đạt được (mỗi dòng 1 ý)</label>
+                            <textarea id="proj-impact" rows="3" placeholder="Kết quả 1&#10;Kết quả 2" class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2">
+                        <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+                            <input id="proj-published" type="checkbox" checked class="h-4 w-4 accent-[#2C4A3B]">
+                            <span>Đăng công khai trên trang chủ</span>
+                        </label>
+                        <button type="submit" class="px-6 py-2.5 bg-forest hover:bg-forest-light text-rustic-bg text-sm font-semibold">
+                            Lưu dự án
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Projects List -->
+                <div id="admin-projects-list" class="space-y-3"></div>
+            </section>
+
+            <!-- TAB 2: TREKKING LOGS -->
+            <section id="tab-treks" class="tab-panel hidden space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-forest">Quản lý Nhật ký Leo núi (Trails &amp; Tales)</h2>
+                        <p class="text-xs text-gray-600 mt-0.5">Viết bài chia sẻ chuyến đi mới, cập nhật hình ảnh và thông số cung đường.</p>
+                    </div>
+                    <button id="new-trek-btn" type="button" class="px-4 py-2.5 bg-terracotta hover:bg-terracotta-hover text-white text-sm font-semibold">
+                        + Viết bài mới
+                    </button>
+                </div>
+
+                <!-- Trek Editor Form -->
+                <form id="trek-form" class="hidden bg-white border border-forest/20 p-6 space-y-4 shadow-sm">
+                    <div class="flex items-center justify-between border-b border-forest/10 pb-3">
+                        <h3 id="trek-form-title" class="font-bold text-forest">Viết nhật ký mới</h3>
+                        <button id="cancel-trek-btn" type="button" class="text-xs font-mono text-gray-500 hover:text-red-600">Đóng ✕</button>
+                    </div>
+                    <input type="hidden" id="trek-id">
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Tiêu đề bài viết *</label>
+                            <input id="trek-title" type="text" required class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Slug *</label>
+                            <input id="trek-slug" type="text" required placeholder="chuyen-di-moi" class="w-full px-3 py-2 border border-forest/20 text-sm font-mono">
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Nhãn (Tag) *</label>
+                            <input id="trek-tag" type="text" required placeholder="Trekking Log • Q4" class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Link ảnh bìa (URL) *</label>
+                            <input id="trek-image" type="url" required placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Thứ tự hiển thị</label>
+                            <input id="trek-sort" type="number" value="10" class="w-full px-3 py-2 border border-forest/20 text-sm font-mono">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Độ cao</label>
+                            <input id="trek-elevation" type="text" placeholder="2.979 m" class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Quãng đường</label>
+                            <input id="trek-distance" type="text" placeholder="~16 km (khứ hồi)" class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Độ khó</label>
+                            <input id="trek-difficulty" type="text" placeholder="Trung bình (6/10)" class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Khu vực</label>
+                            <input id="trek-location" type="text" placeholder="Yên Bái" class="w-full px-3 py-2 border border-forest/20 text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Đoạn trích ngắn *</label>
+                        <textarea id="trek-excerpt" rows="2" required class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Nội dung bài viết (mỗi đoạn cách nhau bằng 1 dòng trống) *</label>
+                        <textarea id="trek-story" rows="6" required class="w-full px-3 py-2 border border-forest/20 text-sm"></textarea>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-4 pt-2">
+                        <div class="flex items-center gap-6">
+                            <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+                                <input id="trek-published" type="checkbox" checked class="h-4 w-4 accent-[#2C4A3B]">
+                                <span>Đăng công khai</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+                                <input id="trek-featured" type="checkbox" class="h-4 w-4 accent-[#A65D37]">
+                                <span>Bài nổi bật</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="px-6 py-2.5 bg-forest hover:bg-forest-light text-rustic-bg text-sm font-semibold">
+                            Lưu &amp; Đăng bài
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Treks List -->
+                <div id="admin-treks-list" class="space-y-3"></div>
+            </section>
+
+            <!-- TAB 3: PROFILE & SOCIAL LINKS -->
+            <section id="tab-settings" class="tab-panel hidden">
+                <form id="settings-form" class="bg-white border border-forest/15 p-6 sm:p-8 max-w-2xl space-y-5">
+                    <div>
+                        <h2 class="text-xl font-bold text-forest">Hồ sơ &amp; Liên kết Mạng xã hội</h2>
+                        <p class="text-xs text-gray-600 mt-1">Thay đổi tại đây sẽ cập nhật trực tiếp lên trang chủ (để trống nếu muốn ẩn biểu tượng nào đó).</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Email hiển thị</label>
+                        <input id="set-email" type="email" required class="w-full px-3.5 py-2.5 border border-forest/20 text-sm">
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Link Facebook</label>
+                            <input id="set-facebook" type="url" placeholder="https://facebook.com/username" class="w-full px-3.5 py-2.5 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Link Zalo</label>
+                            <input id="set-zalo" type="url" placeholder="https://zalo.me/09xxxxxxxx" class="w-full px-3.5 py-2.5 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Link TikTok</label>
+                            <input id="set-tiktok" type="url" placeholder="https://tiktok.com/@username" class="w-full px-3.5 py-2.5 border border-forest/20 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Link LinkedIn</label>
+                            <input id="set-linkedin" type="url" placeholder="https://linkedin.com/in/username" class="w-full px-3.5 py-2.5 border border-forest/20 text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono uppercase text-forest font-semibold mb-1">Link GitHub</label>
+                        <input id="set-github" type="url" placeholder="https://github.com/username" class="w-full px-3.5 py-2.5 border border-forest/20 text-sm">
+                    </div>
+                    <button type="submit" class="px-6 py-3 bg-forest hover:bg-forest-light text-rustic-bg text-sm font-semibold">
+                        Lưu cấu hình mạng xã hội
+                    </button>
+                </form>
+            </section>
+
+            <!-- TAB 4: CONTACT MESSAGES -->
+            <section id="tab-messages" class="tab-panel hidden space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold text-forest">Hộp thư Liên hệ</h2>
+                        <p class="text-xs text-gray-600 mt-0.5">Lời nhắn khách gửi từ mục Let's Connect trên trang chủ.</p>
+                    </div>
+                    <button id="refresh-messages-btn" type="button" class="px-3 py-1.5 text-xs font-mono border border-forest/20 hover:border-terracotta">
+                        Làm mới ↻
+                    </button>
+                </div>
+                <div id="admin-messages-list" class="space-y-3"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="assets/js/supabase-client.js"></script>
+    <script src="assets/js/admin.js"></script>
+</body>
+</html>
